@@ -41,7 +41,7 @@ router.post('/signup', async (req, res) => {
         return res.json({ message: "username must be 3-15 characters" })
 
     /* check if email already taken */
-    db.query(`SELECT * FROM TBD.User WHERE Email = '${email}'`, (err, results) => {
+    db.query(`SELECT * FROM TBD.User WHERE UserEmail = '${email}'`, (err, results) => {
         
         if (err) throw err
         if (results !== undefined && results.length > 0) return res.status(403).json({ message: "email taken" })
@@ -56,7 +56,7 @@ router.post('/signup', async (req, res) => {
                 if (err) return res.status(400).json({ message: "could not store hashed password in database" })
 
                 //create an accessToken for the user
-                const user = { email: email }
+                const user = { email: email, username: username }
 
                 const accessToken = createAccessToken(user)
                 const refreshToken = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET, {
@@ -83,32 +83,33 @@ router.post('/signup', async (req, res) => {
 
 router.post('/login', async (req, res) => {
 
-    const email = req.body.email;
+    const email = req.body.email
 
     /* basic checks */
     if (email === undefined || req.body.password === undefined)
         return res.status(406).json({ message: "username, email, password are required fields" })
 
-    db.query(`SELECT * FROM TBD.User WHERE Email = '${email}'`, (err, results) => {
+    db.query(`SELECT * FROM TBD.User WHERE UserEmail = '${email}'`, (err, results) => {
         if(err) throw err
 
         if(results.length === 0) return res.status(404).json( { message: "user not found" }) 
         else {
 
             //if we've located a user with this email
-            db.query(`SELECT ?? FROM TBD.User WHERE ?? = ?`, ['Password', 'Email', email],
+            db.query(`SELECT ??, ?? FROM TBD.User WHERE ?? = ?`, ['UserPassword', 'UserName', 'UserEmail', email],
             async (err, results) => {
                 
                 if(err) throw err
                 
-                const db_pw = results[0].Password
+                const db_pw = results[0].UserPassword
+                const username = results[0].UserName
         
                 const comparison = await bcrypt.compare(req.body.password, db_pw)
         
                 if(comparison === false) return res.status(403).json({ message: "incorrect password"})
                 else {
         
-                    const user = { email: email }
+                    const user = { email: email, username: username }
         
                     const accessToken = createAccessToken(user)
                     const refreshToken = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET, {
@@ -141,7 +142,7 @@ router.delete('/logout', async (req, res) => {
     if(email === undefined) return res.status(406).json({ message: "email is required to log out"})
     
     //delete all refresh tokens from table for that specific user
-    db.query(`DELETE FROM TBD.Token WHERE Email = '${email}'`, (err, results) => {
+    db.query(`DELETE FROM TBD.Token WHERE UserEmail = '${email}'`, (err, results) => {
         
         if(err) return res.status(500).json({ message: "could not delete refresh tokens from db"})
         else return res.status(200).json({ message: `succesfully signed ${email} out` })
@@ -159,7 +160,13 @@ router.get('/token', async (req, res) => {
     if(token === undefined) return res.status(406).json({ message: "need refreshToken"})
    
     //check db for token
-    db.query(`SELECT * FROM TBD.Token WHERE Token = ?`, [token], (err, results) => {
+    db.query(`
+    
+        select UserEmail, UserName, Token
+        from TBD.Token inner join TBD.User
+        where (UserEmail = TokenEmail) and (Token = ?)
+
+        `, [token], (err, results) => {
 
         if(err) return res.status(403).json({ message: "error finding token" })
         else {
@@ -168,7 +175,7 @@ router.get('/token', async (req, res) => {
             else {
                 
                 //generate new accessToken
-                const user = { email: results[0].Email }
+                const user = { email: results[0].UserEmail, username: results[0].UserName }
                 const accessToken = createAccessToken(user) 
                 return res.status(200).json({ accessToken: accessToken })
 
