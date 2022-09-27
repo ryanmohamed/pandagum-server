@@ -71,7 +71,7 @@ router.post('/signup', async (req, res) => {
                 //httpOnly not available to js, we dont want regular cookies or localStorage!
                 //1day 
                 res.cookie('jwt', refreshToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000})
-                res.status(200).json({ accessToken: accessToken })
+                res.status(200).json({ accessToken: accessToken, user: user })
 
             })
 
@@ -123,7 +123,7 @@ router.post('/login', async (req, res) => {
                     //httpOnly not available to js, we dont want regular cookies or localStorage!
                     //1day 
                     res.cookie('jwt', refreshToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000})
-                    res.status(200).json({ accessToken: accessToken })
+                    res.status(200).json({ accessToken: accessToken, user: user })
                 
                 }
         
@@ -177,7 +177,7 @@ router.get('/token', async (req, res) => {
                 //generate new accessToken
                 const user = { email: results[0].UserEmail, username: results[0].UserName }
                 const accessToken = createAccessToken(user) 
-                return res.status(200).json({ accessToken: accessToken })
+                return res.status(200).json({ accessToken: accessToken, user: user })
 
             }
 
