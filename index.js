@@ -64,10 +64,6 @@ io.use((socket, next) => {
 
 })
 
-
-let pool = new Array(0)
-let users = new Array(0)
-
 setInterval(() => {
     io.to('pool').emit('pairup', "performing pair up...")
 }, 1000)
@@ -76,47 +72,20 @@ io.on('connection', (socket) => {
 
     console.log('New connection')
 
-    socket.join('pool') //join pool of players
-
-    socket.on('name', (name) => {
-        const id = socket.id
-        const user = {
-            username: name,
-            id: id
-        }
-        console.log(`Adding new client: ${socket.id} to pool...\n`)
-        pool.push(user)
-        console.table(pool)
-
-        users.push(name)
-
-        io.to('pool').emit('userlist', users)
+    socket.on('join pool', () => {
+        socket.join('pool') //join pool of players
+        io.to('pool').emit('msg', 'hi guys new dude here')
     })
+
+    socket.on('exit pool', () => {
+        socket.leave('pool')
+        io.to('pool').emit('msg', 'some dude left')
+    })
+
 
     socket.on('disconnect', () => {
 
         console.log('Disconnection')
-
-        const user = pool.filter(ele => {
-            return ele.id === socket.id
-        })[0]
-
-        console.log(`Removing client: ${socket.id} from pool...\n`)
-
-        if(pool.includes(user)){ //find the exact user and remove from pool
-            const index = pool.indexOf(user)
-            pool.splice(index, 1)
-        }
-
-        //come back and consider an edge case for two users with the same name
-        users = users.filter(ele => { //remove the user with the matching username
-            return ele !== user.username
-        }) 
-
-        console.log(users)
-        console.table(pool)
-        io.to('pool').emit('userlist', users)
-
         socket.connected = false
 
     })
