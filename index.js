@@ -75,8 +75,67 @@ const sendMsg = (id, msg) => {
     io.to(id).emit('msg', msg)
 }
 
+const sendErrorMsg = (id, type, msg) => {
+    io.to(id).emit(`${type} error`, msg)
+}
+
+const sendSuccessMsg = (id, type, msg) => {
+    io.to(id).emit(`${type} success`, msg)
+}
+
 const sendCustomEvent = (id, event) => {
     io.to(id).emit(event)
+}
+
+
+//in any room besides its own
+const isInARoom = (id) => {
+
+    const roomMap = io.of('/').adapter.rooms
+    let flag = false
+    //go through each room
+    roomMap.forEach((val, key) => {
+        //if a non socket room contains the id
+        const currRoom = val
+        if(currRoom?.has(id) && key !== id) {
+            flag = true
+            return
+        }
+    })
+    return flag
+
+}
+
+//in specific room
+const isInRoom = (id, roomId) => {
+
+    const roomMap = io.of('/').adapter.rooms
+
+    //check if room exists
+    if(roomMap?.has(roomId) === true){
+        //check room
+        const room = roomMap?.get(roomId)
+        if(room?.has(id)) return true 
+        else return false
+    }
+
+    //room doesn't exist
+    else return false;
+
+}
+
+const exitAllRooms = (socket) => {
+ 
+    const { id, rooms } = socket
+    rooms.forEach((val, key) => {
+        if(key !== id){
+            socket.leave(key)
+            console.log(`Socket leaving room ${key}`)   
+            if(key == 'pool') sendCustomEvent(id, 'left pool')
+        }
+    })
+    sendCustomEvent(id, 'left rooms')
+
 }
 
 //should get called pretty often, since
@@ -108,7 +167,7 @@ io.on('connection', (socket) => {
 
     console.log('\nNew connection')
 
-    socket.on('create room', (payload) => {
+    socket.on('create room', async (payload) => {
 
         const { roomId } = payload
         if(typeof roomId !== "string") roomId = roomId.toString()
@@ -121,29 +180,35 @@ io.on('connection', (socket) => {
             const roomMap = io.of('/').adapter.rooms
             const room = roomMap.get(roomId)
 
-            //if client is in the pool, remove them
-            if(roomMap.get('pool')?.has(id)){
-                sendMsg(id, `${id} leaving pool`)
-                socket.leave('pool')
-                sendCustomEvent(id, 'left pool')
-            }
+            // //if client is in the pool, remove them
+            // if(isInRoom(id, 'pool')){
+            //     sendMsg(id, `${id} leaving pool`)
+            //     socket.leave('pool')
+            // }
 
             //room already exists
             if(room !== undefined && room !== null){
                 //socket is in room
                 if (room.has(id)) {
                     sendMsg(id, 'you are already in room')
+                    sendErrorMsg(id, 'create', `You are already in room ${roomId}.`)
                 }
                 //socket in room, but it exists
                 else {
                     sendMsg(id, 'room already exists')
+                    sendErrorMsg(id, 'create', `Room ${roomId} already exists! Try another.`)
                 }
             }
     
             //room doesn't exist yet,
             else {  //create-room callback implicitly handles hashtable
+                if(isInARoom(id)) {
+                    exitAllRooms(socket)
+                    sendErrorMsg(id, 'create', 'Leaving all rooms.')
+                }
                 socket.join(roomId)
                 sendMsg(id, `created room ${roomId}`)
+                sendSuccessMsg(id, 'create', `Room ${roomId} created and joined.`)
             }
         
         }
@@ -162,62 +227,59 @@ io.on('connection', (socket) => {
             const roomMap = io.of('/').adapter.rooms
             const room = roomMap.get(roomId)
 
-            if(roomMap.get('pool')?.has(id)){
-                sendMsg(id, `${id} leaving pool`)
-                socket.leave('pool')
-                sendCustomEvent(id, 'left pool')
-            }
-
             //room does not exist
             if(room === undefined || room === null){
-                sendMsg(id, `room ${roomId} does not exist yet`)
+                sendMsg(id, `Room ${roomId} does not exist yet`)
+                sendErrorMsg(id, 'join', `Room ${roomId} not found`)
             }
 
-            //client already in room
+            //client already in that specific room
             else if(room.has(id)){
                 sendMsg(id, `${id} already in room ${roomId}`)
+                sendErrorMsg(id, 'join', `You are already in Room ${roomId}`)
             }
 
-            //room exists
+            //room exists and client isn't in it
             else {
+
+                //exit all other rooms
+                if(isInARoom(id)) {
+                    sendMsg(id, `${id} leaving all other rooms`)
+                    sendSuccessMsg(id, 'join', 'Leaving other rooms')
+                    exitAllRooms(socket)
+                }
+
                 const connections = room.size
-                if(connections >= 2) sendMsg(id, 'room full') //full room
+                if(connections >= 2) {//full room
+                    sendMsg(id, 'room full')
+                    sendErrorMsg(id, 'join', `Room ${roomId} is full!`)
+                } 
                 else { //non full room
                     socket.join(roomId)
                     sendMsg(id, `joined room ${roomId}`)
+                    sendSuccessMsg(id, 'join', `Joined room ${roomId}`)
                 }
+
             }
         }
 
         else sendMsg(socket?.id, 'need 4 digit roomId')
-
+        
     })
 
     socket.on('join pool', () => {
 
         const roomMap = io.of('/').adapter.rooms
         const { id } = socket
-        let flag = false
         
-        //for each room
-        roomMap.forEach((val, key) => {
-            
-            const currRoom = val
-            if(currRoom.has(id) && key !== id) {
-                flag = true
-                return
-            } 
-
-        })
-        
-        if(flag === true){
-            return sendMsg(id, `${id} is already in a room`)
+        if(isInARoom(id)){
+            sendMsg(id, `${id} is already in a room`)
+            sendMsg(id, `${id} is leaving room`)
+            exitAllRooms(socket)
         }
-        else {
-            sendMsg(id, `${id} joining the pool`)
-            sendCustomEvent(id, 'entered pool')
-            return socket.join('pool')
-        }
+        sendMsg(id, `${id} joining the pool`)
+        sendCustomEvent(id, 'entered pool')
+        socket.join('pool')
 
     })
 
