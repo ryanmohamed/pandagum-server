@@ -64,24 +64,169 @@ io.use((socket, next) => {
 
 })
 
+let roomConnections = {}
+console.log(roomConnections)
+
 setInterval(() => {
     io.to('pool').emit('pairup', "performing pair up...")
 }, 1000)
 
+const sendMsg = (id, msg) => {
+    io.to(id).emit('msg', msg)
+}
+
+const sendCustomEvent = (id, event) => {
+    io.to(id).emit(event)
+}
+
+//should get called pretty often, since
+//each socket automatically enters a room
+//defined by their socket id!
+io.of("/").adapter.on("create-room", (room) => {
+
+    console.log(`\nRoom ${room} was created`);
+    roomConnections[room] = 1 //must have 1 connection to be created
+
+});
+
+io.of("/").adapter.on("join-room", (room, id) => {
+    console.log(`\nSocket ${id} has joined room ${room}`);
+    roomConnections[room] += 1
+});
+
+io.of("/").adapter.on("leave-room", (room, id) => {
+    console.log(`\nSocket ${id} has left room ${room}`);
+    roomConnections[room] -= 1
+});
+
+io.of("/").adapter.on("delete-room", (room) => {
+    console.log(`\nRoom ${room} was deleted`);
+    delete roomConnections[room]
+});
+
 io.on('connection', (socket) => {
 
-    console.log('New connection')
+    console.log('\nNew connection')
+
+    socket.on('create room', (payload) => {
+
+        const { roomId } = payload
+        if(typeof roomId !== "string") roomId = roomId.toString()
+        const { id } = socket
+
+        console.log(`\nTrying to create room ${roomId}...`)
+
+        if(roomId.match(/^\d{4}$/)){
+
+            const roomMap = io.of('/').adapter.rooms
+            const room = roomMap.get(roomId)
+
+            //if client is in the pool, remove them
+            if(roomMap.get('pool')?.has(id)){
+                sendMsg(id, `${id} leaving pool`)
+                socket.leave('pool')
+                sendCustomEvent(id, 'left pool')
+            }
+
+            //room already exists
+            if(room !== undefined && room !== null){
+                //socket is in room
+                if (room.has(id)) {
+                    sendMsg(id, 'you are already in room')
+                }
+                //socket in room, but it exists
+                else {
+                    sendMsg(id, 'room already exists')
+                }
+            }
+    
+            //room doesn't exist yet,
+            else {  //create-room callback implicitly handles hashtable
+                socket.join(roomId)
+                sendMsg(id, `created room ${roomId}`)
+            }
+        
+        }
+
+        else sendMsg(socket?.id, 'need 4 digit roomId')
+
+    })
+
+    socket.on('join room', (payload) => {
+
+        const { roomId } = payload
+        if(typeof roomId !== "string") roomId = roomId.toString()
+        const id = socket?.id
+
+        if(roomId.match(/^\d{4}$/)){
+            const roomMap = io.of('/').adapter.rooms
+            const room = roomMap.get(roomId)
+
+            if(roomMap.get('pool')?.has(id)){
+                sendMsg(id, `${id} leaving pool`)
+                socket.leave('pool')
+                sendCustomEvent(id, 'left pool')
+            }
+
+            //room does not exist
+            if(room === undefined || room === null){
+                sendMsg(id, `room ${roomId} does not exist yet`)
+            }
+
+            //client already in room
+            else if(room.has(id)){
+                sendMsg(id, `${id} already in room ${roomId}`)
+            }
+
+            //room exists
+            else {
+                const connections = room.size
+                if(connections >= 2) sendMsg(id, 'room full') //full room
+                else { //non full room
+                    socket.join(roomId)
+                    sendMsg(id, `joined room ${roomId}`)
+                }
+            }
+        }
+
+        else sendMsg(socket?.id, 'need 4 digit roomId')
+
+    })
 
     socket.on('join pool', () => {
-        socket.join('pool') //join pool of players
-        io.to('pool').emit('msg', 'hi guys new dude here')
+
+        const roomMap = io.of('/').adapter.rooms
+        const { id } = socket
+        let flag = false
+        
+        //for each room
+        roomMap.forEach((val, key) => {
+            
+            const currRoom = val
+            if(currRoom.has(id) && key !== id) {
+                flag = true
+                return
+            } 
+
+        })
+        
+        if(flag === true){
+            return sendMsg(id, `${id} is already in a room`)
+        }
+        else {
+            sendMsg(id, `${id} joining the pool`)
+            sendCustomEvent(id, 'entered pool')
+            return socket.join('pool')
+        }
+
     })
 
     socket.on('exit pool', () => {
+        const { id } = socket
+        sendMsg(id, `${id} leaving the pool`)
+        sendCustomEvent(id, 'left pool')
         socket.leave('pool')
-        io.to('pool').emit('msg', 'some dude left')
     })
-
 
     socket.on('disconnect', () => {
 
