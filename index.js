@@ -65,7 +65,7 @@ io.use((socket, next) => {
 })
 
 let roomConnections = {}
-console.log(roomConnections)
+let roomInfo = {}
 
 setInterval(() => {
     io.to('pool').emit('pairup', "performing pair up...")
@@ -132,10 +132,44 @@ const exitAllRooms = (socket) => {
             socket.leave(key)
             console.log(`Socket leaving room ${key}`)   
             if(key == 'pool') sendCustomEvent(id, 'left pool')
+            else {
+                //we don't ned to do this for the pool 
+                //because we don't track usernames 
+                if(roomInfo[key].includes(id)){
+                    const i = roomInfo[key].indox(id)
+                    roomInfo[key].splice(i, 1)
+                    console.log(roomInfo[key]);
+                }
+            }
         }
     })
     sendCustomEvent(id, 'left rooms')
 
+}
+
+const getCurrentRoom = (socket) => {
+
+    const { id, rooms } = socket
+    let room = null
+
+    if(!isInARoom(id)) return null
+    else {
+
+        const res = rooms.forEach((val, key) => {
+            if(key !== id) {
+                room = key
+            }
+        })
+
+        return room
+
+    }
+
+}
+
+const joinAndReady = async (socket, roomId, callback) => {
+    await socket.join(roomId)
+    callback()
 }
 
 //should get called pretty often, since
@@ -163,11 +197,11 @@ io.of("/").adapter.on("delete-room", (room) => {
     delete roomConnections[room]
 });
 
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
 
     console.log('\nNew connection')
 
-    socket.on('create room', async (payload) => {
+    socket.on('create room', (payload) => {
 
         const { roomId } = payload
         if(typeof roomId !== "string") roomId = roomId.toString()
@@ -206,7 +240,13 @@ io.on('connection', (socket) => {
                     exitAllRooms(socket)
                     sendErrorMsg(id, 'create', 'Leaving all rooms.')
                 }
+
                 socket.join(roomId)
+
+                const username = socket?.handshake?.auth?.username
+                roomInfo[roomId] = [username]
+                
+                console.log(roomInfo[roomId])
                 sendMsg(id, `created room ${roomId}`)
                 sendSuccessMsg(id, 'create', `Room ${roomId} created and joined.`)
             }
@@ -217,7 +257,7 @@ io.on('connection', (socket) => {
 
     })
 
-    socket.on('join room', (payload) => {
+    socket.on('join room', async (payload) => {
 
         const { roomId } = payload
         if(typeof roomId !== "string") roomId = roomId.toString()
@@ -255,9 +295,24 @@ io.on('connection', (socket) => {
                     sendErrorMsg(id, 'join', `Room ${roomId} is full!`)
                 } 
                 else { //non full room
-                    socket.join(roomId)
+                    await socket.join(roomId)
+
+                    // const username = socket?.handshake?.auth?.username
+                    // roomInfo[roomId]?.push(username)
+                    // console.log(roomInfo[roomId])
+
+                    // joinAndReady(socket, roomId, () => {
+                    //     io.to(roomId).emit('ready')
+                    //     io.to(id).emit('ready')
+                    // })
+
                     sendMsg(id, `joined room ${roomId}`)
                     sendSuccessMsg(id, 'join', `Joined room ${roomId}`)
+                    sendMsg(roomId, `player joined room ${roomId}`)
+                    console.log(room)
+                    // io.to(roomId).emit('ready') the emit is working, its just emitting to the client before they even navigate to where we assign the listener, rethink room context, socket context etc 
+                    // sendCustomEvent(roomId, 'ready')
+                    // sendCustomEvent(id, 'ready')
                 }
 
             }
@@ -288,6 +343,12 @@ io.on('connection', (socket) => {
         sendMsg(id, `${id} leaving the pool`)
         sendCustomEvent(id, 'left pool')
         socket.leave('pool')
+    })
+
+    socket.on('get room id', () => {
+        const { id } = socket
+        const roomId = getCurrentRoom(socket)
+        io.to(id).emit('room id', roomId)
     })
 
     socket.on('disconnect', () => {
