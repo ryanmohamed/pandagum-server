@@ -65,6 +65,8 @@ io.use((socket, next) => {
 })
 
 let roomConnections = {}
+
+//dictionary where each key (room id) return RoomInfo
 let roomInfo = {}
 
 setInterval(() => {
@@ -132,15 +134,15 @@ const exitAllRooms = (socket) => {
             socket.leave(key)
             console.log(`Socket leaving room ${key}`)   
             if(key == 'pool') sendCustomEvent(id, 'left pool')
-            else {
-                //we don't ned to do this for the pool 
-                //because we don't track usernames 
-                if(roomInfo[key].includes(id)){
-                    const i = roomInfo[key].indox(id)
-                    roomInfo[key].splice(i, 1)
-                    console.log(roomInfo[key]);
-                }
-            }
+            // else {
+            //     //we don't ned to do this for the pool 
+            //     //because we don't track usernames 
+            //     if(roomInfo[key].includes(id)){
+            //         const i = roomInfo[key].indox(id)
+            //         roomInfo[key].splice(i, 1)
+            //         console.log(roomInfo[key]);
+            //     }
+            // }
         }
     })
     sendCustomEvent(id, 'left rooms')
@@ -167,11 +169,6 @@ const getCurrentRoom = (socket) => {
 
 }
 
-const joinAndReady = async (socket, roomId, callback) => {
-    await socket.join(roomId)
-    callback()
-}
-
 //should get called pretty often, since
 //each socket automatically enters a room
 //defined by their socket id!
@@ -190,6 +187,26 @@ io.of("/").adapter.on("join-room", (room, id) => {
 io.of("/").adapter.on("leave-room", (room, id) => {
     console.log(`\nSocket ${id} has left room ${room}`);
     roomConnections[room] -= 1
+
+    //if the first user left    
+    if(roomInfo[room]?.user1.id === id){
+        //make the second user the first user
+        roomInfo[room].user1 = roomInfo[room].user2
+        roomInfo[room].user2 = undefined
+        roomInfo[room].ready = false 
+        console.log(roomInfo[room])
+        return io.to(room).emit('room update', roomInfo[room])
+    }
+
+    //if the second user left
+    //make the second user the first user
+    else if(roomInfo[room]?.user2.id === id){
+        roomInfo[room].user2 = undefined
+        roomInfo[room].ready = false 
+        console.log(roomInfo[room])
+        return io.to(room).emit('room update', roomInfo[room])
+    }
+
 });
 
 io.of("/").adapter.on("delete-room", (room) => {
@@ -243,12 +260,25 @@ io.on('connection', async (socket) => {
 
                 socket.join(roomId)
 
+                //since the the room has just been created, we only set it to a list len 1
                 const username = socket?.handshake?.auth?.username
-                roomInfo[roomId] = [username]
-                
+
+                //set dictionary key value to object
+                roomInfo[roomId] = { 
+                    ready: false,
+                    user1: {
+                        username: username,
+                        id: socket?.id
+                    },
+                    user2: undefined
+                }
+
                 console.log(roomInfo[roomId])
+
                 sendMsg(id, `created room ${roomId}`)
                 sendSuccessMsg(id, 'create', `Room ${roomId} created and joined.`)
+                io.to(roomId).emit('room update', roomInfo[roomId])
+
             }
         
         }
@@ -297,22 +327,20 @@ io.on('connection', async (socket) => {
                 else { //non full room
                     await socket.join(roomId)
 
-                    // const username = socket?.handshake?.auth?.username
-                    // roomInfo[roomId]?.push(username)
-                    // console.log(roomInfo[roomId])
+                    const username = socket?.handshake?.auth?.username
+                    roomInfo[roomId].user2 = {
+                        username: username,
+                        id: socket?.id
+                    }
+                    roomInfo[roomId].ready = true
 
-                    // joinAndReady(socket, roomId, () => {
-                    //     io.to(roomId).emit('ready')
-                    //     io.to(id).emit('ready')
-                    // })
+                    console.log(roomInfo[roomId])
 
                     sendMsg(id, `joined room ${roomId}`)
                     sendSuccessMsg(id, 'join', `Joined room ${roomId}`)
-                    sendMsg(roomId, `player joined room ${roomId}`)
-                    console.log(room)
-                    // io.to(roomId).emit('ready') the emit is working, its just emitting to the client before they even navigate to where we assign the listener, rethink room context, socket context etc 
-                    // sendCustomEvent(roomId, 'ready')
-                    // sendCustomEvent(id, 'ready')
+
+                    io.to(roomId).emit('room update', roomInfo[roomId]) //the emit is working, its just emitting to the client before they even navigate to where we assign the listener, rethink room context, socket context etc 
+
                 }
 
             }
