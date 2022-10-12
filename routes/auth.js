@@ -137,12 +137,13 @@ router.post('/login', async (req, res) => {
 
 router.delete('/logout', async (req, res) => {
 
-    const email = req.body.email
+    const email = req?.body?.email
+    console.log(req.body);
 
     if(email === undefined) return res.status(406).json({ message: "email is required to log out"})
     
     //delete all refresh tokens from table for that specific user
-    db.query(`DELETE FROM TBD.Token WHERE UserEmail = '${email}'`, (err, results) => {
+    db.query(`DELETE FROM TBD.Token WHERE TokenEmail = '${email}'`, (err, results) => {
         
         if(err) return res.status(500).json({ message: "could not delete refresh tokens from db"})
         else return res.status(200).json({ message: `succesfully signed ${email} out` })
