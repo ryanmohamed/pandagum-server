@@ -379,6 +379,13 @@ io.on('connection', async (socket) => {
         io.to(id).emit('room id', roomId)
     })
 
+    socket.on('message', values => {
+        const { roomId, message } = values
+        console.log(roomId)
+        console.log(message);
+        socket.to(roomId).emit('chat-msg', message)
+    })
+
     socket.on('disconnect', () => {
 
         console.log('Disconnection')
