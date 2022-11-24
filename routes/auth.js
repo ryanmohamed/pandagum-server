@@ -13,10 +13,14 @@ require('dotenv').config()
 const authenticateToken = require('../middleware/authenticateToken')
 
 let db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'password',
-    database: 'TBD'
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PW,
+    database: process.env.DB_NAME
+})
+
+db.on('error', err => {
+    console.error(err)
 })
 
 const createAccessToken = (payload) => {
@@ -41,7 +45,7 @@ router.post('/signup', async (req, res) => {
         return res.json({ message: "username must be 3-15 characters" })
 
     /* check if email already taken */
-    db.query(`SELECT * FROM TBD.User WHERE UserEmail = '${email}'`, (err, results) => {
+    db.query(`SELECT * FROM ${process.env.DB_NAME}.user WHERE UserEmail = '${email}'`, (err, results) => {
         
         if (err) throw err
         if (results !== undefined && results.length > 0) return res.status(403).json({ message: "email taken" })
@@ -51,7 +55,7 @@ router.post('/signup', async (req, res) => {
 
             if (err !== undefined) return res.status(400).json({ message: "could not hash password" })
 
-            db.query(`INSERT INTO TBD.User VALUES ('${username}', '${email}', '${hash}')`, (err, result) => {
+            db.query(`INSERT INTO ${process.env.DB_NAME}.user VALUES ('${username}', '${email}', '${hash}')`, (err, result) => {
 
                 if (err) return res.status(400).json({ message: "could not store hashed password in database" })
 
@@ -64,7 +68,7 @@ router.post('/signup', async (req, res) => {
                 })
                 
                 //store refreshToken
-                db.query(`INSERT INTO TBD.Token VALUES ('${email}', '${refreshToken}')`)
+                db.query(`INSERT INTO ${process.env.DB_NAME}.token VALUES ('${email}', '${refreshToken}')`)
 
                 //send the access token back to the user
 
@@ -89,14 +93,14 @@ router.post('/login', async (req, res) => {
     if (email === undefined || req.body.password === undefined)
         return res.status(406).json({ message: "username, email, password are required fields" })
 
-    db.query(`SELECT * FROM TBD.User WHERE UserEmail = '${email}'`, (err, results) => {
+    db.query(`SELECT * FROM ${process.env.DB_NAME}.user WHERE UserEmail = '${email}'`, (err, results) => {
         if(err) throw err
 
         if(results.length === 0) return res.status(404).json( { message: "user not found" }) 
         else {
 
             //if we've located a user with this email
-            db.query(`SELECT ??, ?? FROM TBD.User WHERE ?? = ?`, ['UserPassword', 'UserName', 'UserEmail', email],
+            db.query(`SELECT ??, ?? FROM ${process.env.DB_NAME}.user WHERE ?? = ?`, ['UserPassword', 'UserName', 'UserEmail', email],
             async (err, results) => {
                 
                 if(err) throw err
@@ -117,7 +121,7 @@ router.post('/login', async (req, res) => {
                     })
                     
                     //store refreshToken
-                    db.query(`INSERT INTO TBD.Token VALUES ('${email}', '${refreshToken}')`)
+                    db.query(`INSERT INTO ${process.env.DB_NAME}.token VALUES ('${email}', '${refreshToken}')`)
         
                     //send the access token back to the user
                     //httpOnly not available to js, we dont want regular cookies or localStorage!
@@ -143,7 +147,7 @@ router.delete('/logout', async (req, res) => {
     if(email === undefined) return res.status(406).json({ message: "email is required to log out"})
     
     //delete all refresh tokens from table for that specific user
-    db.query(`DELETE FROM TBD.Token WHERE TokenEmail = '${email}'`, (err, results) => {
+    db.query(`DELETE FROM ${process.env.DB_NAME}.token WHERE TokenEmail = '${email}'`, (err, results) => {
         
         if(err) return res.status(500).json({ message: "could not delete refresh tokens from db"})
         else return res.status(200).json({ message: `succesfully signed ${email} out` })
@@ -164,7 +168,7 @@ router.get('/token', async (req, res) => {
     db.query(`
     
         select UserEmail, UserName, Token
-        from TBD.Token inner join TBD.User
+        from ${process.env.DB_NAME}.token inner join ${process.env.DB_NAME}.user
         where (UserEmail = TokenEmail) and (Token = ?)
 
         `, [token], (err, results) => {

@@ -20,10 +20,3 @@ app.use('/auth', authRouter);
 app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}...\n`)
 })
-
-let db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'password',
-    database: 'TBD'
-})

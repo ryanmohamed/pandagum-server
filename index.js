@@ -1,3 +1,20 @@
+const questions = [
+    {
+      question: 'How much wood would a woodchuck chuck, if a woodchuck could chuck wood?',
+      type: 'mc',
+      choices: ['one', 'two', 'three']
+    },
+    {
+      question: 'How much wood would a woodchuck chuck, if a woodchuck could chuck wood?',
+      type: 'mc',
+      choices: ['idk', 'you tell me', 'idc', 'potato', 'forge the sword']
+    },
+    {
+      question: 'How much wood would a woodchuck chuck, if a woodchuck could chuck wood?',
+      type: 'short'
+    }
+]
+
 require('dotenv').config()
 
 const http = require('http')
@@ -67,26 +84,32 @@ io.use((socket, next) => {
 let roomConnections = {}
 
 //dictionary where each key (room id) return RoomInfo
+// - user1 
+// - user2
+// - ready
+// - questions_left
+// - question 
+
 let roomInfo = {}
 
 setInterval(() => {
-    io.to('pool').emit('pairup', "performing pair up...")
+    io.in('pool').emit('pairup', "performing pair up...")
 }, 1000)
 
 const sendMsg = (id, msg) => {
-    io.to(id).emit('msg', msg)
+    io.in(id).emit('msg', msg)
 }
 
 const sendErrorMsg = (id, type, msg) => {
-    io.to(id).emit(`${type} error`, msg)
+    io.in(id).emit(`${type} error`, msg)
 }
 
 const sendSuccessMsg = (id, type, msg) => {
-    io.to(id).emit(`${type} success`, msg)
+    io.in(id).emit(`${type} success`, msg)
 }
 
 const sendCustomEvent = (id, event) => {
-    io.to(id).emit(event)
+    io.in(id).emit(event)
 }
 
 
@@ -194,8 +217,9 @@ io.of("/").adapter.on("leave-room", (room, id) => {
         roomInfo[room].user1 = roomInfo[room].user2
         roomInfo[room].user2 = undefined
         roomInfo[room].ready = false 
-        console.log(roomInfo[room])
-        return io.to(room).emit('room update', roomInfo[room])
+        roomInfo[room].question_left = 3 //reset questions
+        roomInfo[room].question = undefined //no question if not enough players
+        io.in(room).emit('room update', roomInfo[room])
     }
 
     //if the second user left
@@ -203,8 +227,9 @@ io.of("/").adapter.on("leave-room", (room, id) => {
     else if(roomInfo[room]?.user2.id === id){
         roomInfo[room].user2 = undefined
         roomInfo[room].ready = false 
-        console.log(roomInfo[room])
-        return io.to(room).emit('room update', roomInfo[room])
+        roomInfo[room].question_left = 3 //reset questions
+        roomInfo[room].question = undefined //no question if not enough players
+        return io.in(room).emit('room update', roomInfo[room])
     }
 
 });
@@ -268,16 +293,23 @@ io.on('connection', async (socket) => {
                     ready: false,
                     user1: {
                         username: username,
-                        id: socket?.id
+                        id: socket?.id,
+                        locked: false,
+                        answers: []
                     },
-                    user2: undefined
+                    user2: undefined,
+                    question_left: 3,
+                    question: undefined
                 }
 
                 console.log(roomInfo[roomId])
 
                 sendMsg(id, `created room ${roomId}`)
                 sendSuccessMsg(id, 'create', `Room ${roomId} created and joined.`)
-                io.to(roomId).emit('room update', roomInfo[roomId])
+                
+                // io.in sends from the server to ALL clients in the room
+                // socket.io however refers to this specific socket BROADCASTING to all other clients
+                io.in(roomId).emit('room update', roomInfo[roomId])
 
             }
         
@@ -330,17 +362,22 @@ io.on('connection', async (socket) => {
                     const username = socket?.handshake?.auth?.username
                     roomInfo[roomId].user2 = {
                         username: username,
-                        id: socket?.id
+                        id: socket?.id,
+                        locked: false,
+                        answers: []
                     }
                     roomInfo[roomId].ready = true
-
+                    roomInfo[roomId].question_left = 3
+                    roomInfo[roomId].question = questions[0] 
                     console.log(roomInfo[roomId])
 
                     sendMsg(id, `joined room ${roomId}`)
                     sendSuccessMsg(id, 'join', `Joined room ${roomId}`)
 
-                    io.to(roomId).emit('room update', roomInfo[roomId]) //the emit is working, its just emitting to the client before they even navigate to where we assign the listener, rethink room context, socket context etc 
-
+                    // io.in sends from the server to ALL clients in the room
+                    // socket.io however refers to this specific socket BROADCASTING to all other clients
+                    io.in(roomId).emit('room update', roomInfo[roomId]) //the emit is working, its just emitting to the client before they even navigate to where we assign the listener, rethink room context, socket context etc 
+                    
                 }
 
             }
@@ -376,14 +413,44 @@ io.on('connection', async (socket) => {
     socket.on('get room id', () => {
         const { id } = socket
         const roomId = getCurrentRoom(socket)
-        io.to(id).emit('room id', roomId)
+        io.in(id).emit('room id', roomId)
     })
 
     socket.on('message', values => {
         const { roomId, message } = values
         console.log(roomId)
         console.log(message);
+
+        //broadcast message to all OTHER sockets in the room
         socket.to(roomId).emit('chat-msg', message)
+    })
+
+    /* QUESTIONS */
+    socket.on('answer question', async (values) => {
+        
+        const roomId = getCurrentRoom(socket)
+        const { user1, user2 } = roomInfo[roomId]
+
+        if(socket.id == user1.id){
+            roomInfo[roomId].user1.answers.push(values)
+            roomInfo[roomId].user1.locked = true
+            await io.in(roomId).emit('room update', roomInfo[roomId])
+        }
+
+        else if(socket.id == user2.id){
+            roomInfo[roomId].user2.answers.push(values)
+            roomInfo[roomId].user2.locked = true
+            await io.in(roomId).emit('room update', roomInfo[roomId])
+        }
+        
+
+        if(user1.locked == true && user2.locked == true){
+            roomInfo[roomId].user1.locked = false
+            roomInfo[roomId].user2.locked = false
+            roomInfo[roomId].question_left -= 1
+            roomInfo[roomId].question = questions[3 - roomInfo[roomId].question_left]
+            await io.in(roomId).emit("room update", roomInfo[roomId])
+        }
     })
 
     socket.on('disconnect', () => {
