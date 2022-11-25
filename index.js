@@ -30,7 +30,8 @@ const jwt = require('jsonwebtoken')
 app.use(express.json())
 app.use(cors({
     credentials: true,
-    origin: 'http://localhost:3000' //client side
+    allowCredentials: true,
+    origin: 'https://63812295d901c569c7138c32--petmatcher.netlify.app'
 }))
 
 //establish middleware
@@ -44,7 +45,7 @@ app.get('/pool', authenticateToken, async (req, res) => {
     const email = req.user?.email
     const username = req.user?.username
     const ip = req.headers['x-real-ip'] || req.connection.remoteAddress;
-
+    res.setHeader('Access-Control-Allow-Origin', 'https://63812295d901c569c7138c32--petmatcher.netlify.app')
     return res.status(200).json({ username: username })
 
 })
@@ -56,7 +57,7 @@ server.listen(PORT, () => {
 
 const io = socketio(server, {
     cors: {
-        origin: 'http://localhost:3000'
+        origin: 'https://63812295d901c569c7138c32--petmatcher.netlify.app'
     }
 })
 
