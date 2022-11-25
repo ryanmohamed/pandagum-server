@@ -29,6 +29,10 @@ const createAccessToken = (payload) => {
     })
 }
 
+router.get('/', (req, res) => {
+    res.json({"great": "job!"})
+})
+
 router.post('/signup', async (req, res) => {
 
     const email = req.body.email;
