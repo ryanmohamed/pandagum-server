@@ -10,7 +10,7 @@ const mysql = require('mysql')
 app.use(express.json())
 app.use(cors({
     credentials: true,
-    origin: 'http://192.168.1.156:3000',
+    origin: 'https://63812295d901c569c7138c32--petmatcher.netlify.app/',
     optionSuccessStatus: 200
 }))
 
