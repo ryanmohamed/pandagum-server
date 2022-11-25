@@ -9,9 +9,7 @@ const mysql = require('mysql')
 
 app.use(express.json())
 app.use(cors({
-    credentials: true,
-    origin: 'https://63812295d901c569c7138c32--petmatcher.netlify.app',
-    optionSuccessStatus: 200
+    credentials: true
 }))
 
 //establish routers - middleware
