@@ -31,7 +31,7 @@ app.use(express.json())
 app.use(cors({
     credentials: true,
     allowCredentials: true,
-    origin: 'https://63814e27c5e11b0a8466a657--petmatcher.netlify.app'
+    origin: 'https://638152503f0ba615b71921c0--petmatcher.netlify.app'
 }))
 
 //establish middleware
@@ -45,7 +45,7 @@ app.get('/pool', authenticateToken, async (req, res) => {
     const email = req.user?.email
     const username = req.user?.username
     const ip = req.headers['x-real-ip'] || req.connection.remoteAddress;
-    res.setHeader('Access-Control-Allow-Origin', 'https://63814e27c5e11b0a8466a657--petmatcher.netlify.app')
+    res.setHeader('Access-Control-Allow-Origin', 'https://638152503f0ba615b71921c0--petmatcher.netlify.app')
     return res.status(200).json({ username: username })
 
 })
@@ -57,7 +57,8 @@ server.listen(PORT, () => {
 
 const io = socketio(server, {
     cors: {
-        origin: 'https://63812295d901c569c7138c32--petmatcher.netlify.app'
+        origin: 'https://638152503f0ba615b71921c0--petmatcher.netlify.app',
+        credentials: true
     }
 })
 
