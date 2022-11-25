@@ -47,7 +47,7 @@ router.post('/signup', async (req, res) => {
 
     if (username.length < 3 || username.length > 15)
         return res.json({ message: "username must be 3-15 characters" })
-
+ 
     /* check if email already taken */
     db.query(`SELECT * FROM ${process.env.DB_NAME}.user WHERE UserEmail = '${email}'`, (err, results) => {
         
