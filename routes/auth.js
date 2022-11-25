@@ -79,6 +79,7 @@ router.post('/signup', async (req, res) => {
                 //httpOnly not available to js, we dont want regular cookies or localStorage!
                 //1day 
                 res.cookie('jwt', refreshToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000})
+                res.setHeader('Access-Control-Allow-Origin', 'https://63812295d901c569c7138c32--petmatcher.netlify.app')
                 res.status(200).json({ user: user, accessToken: accessToken })
 
             })
@@ -133,6 +134,7 @@ router.post('/login', async (req, res) => {
                     //httpOnly not available to js, we dont want regular cookies or localStorage!
                     //1day 
                     res.cookie('jwt', refreshToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000})
+                    res.setHeader('Access-Control-Allow-Origin', 'https://63812295d901c569c7138c32--petmatcher.netlify.app')
                     res.status(200).json({ user: user, accessToken: accessToken })
                 
                 }
@@ -156,8 +158,10 @@ router.delete('/logout', async (req, res) => {
     db.query(`DELETE FROM ${process.env.DB_NAME}.token WHERE TokenEmail = '${email}'`, (err, results) => {
         
         if(err) return res.status(500).json({ message: "could not delete refresh tokens from db"})
-        else return res.status(200).json({ message: `succesfully signed ${email} out` })
-
+        else {
+            res.setHeader('Access-Control-Allow-Origin', 'https://63812295d901c569c7138c32--petmatcher.netlify.app')
+            return res.status(200).json({ message: `succesfully signed ${email} out` })
+        }
     })
 
 })
@@ -188,6 +192,7 @@ router.get('/token', async (req, res) => {
                 //generate new accessToken
                 const user = { email: results[0].UserEmail, username: results[0].UserName }
                 const accessToken = createAccessToken(user) 
+                res.setHeader('Access-Control-Allow-Origin', 'https://63812295d901c569c7138c32--petmatcher.netlify.app')
                 return res.status(200).json({ user: user, accessToken: accessToken })
 
             }
