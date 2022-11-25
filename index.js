@@ -15,24 +15,30 @@ const questions = [
     }
 ]
 
+const PORT = process.env.PORT || 4000
 require('dotenv').config()
 
-const http = require('http')
 const express = require('express')
 const socketio = require('socket.io')
-
-const app = express()
-const server = http.createServer(app)
 
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
 
+const app = express()
 app.use(express.json())
 app.use(cors({
     credentials: true,
     allowCredentials: true,
     origin: 'https://638152503f0ba615b71921c0--petmatcher.netlify.app'
 }))
+
+const server = app.listen(PORT)
+var io = require('socket.io')(server, {
+    cors: {
+        origins: ['https://638152503f0ba615b71921c0--petmatcher.netlify.app'],
+        credentials: true
+    }
+})
 
 //establish middleware
 const authenticateToken = require('./middleware/authenticateToken')
@@ -48,18 +54,6 @@ app.get('/pool', authenticateToken, async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', 'https://638152503f0ba615b71921c0--petmatcher.netlify.app')
     return res.status(200).json({ username: username })
 
-})
-
-const PORT = process.env.PORT || 4000
-server.listen(PORT, () => {
-    console.log(`Listening on port ${PORT}...\n`)
-})
-
-const io = socketio(server, {
-    cors: {
-        origins: ['https://638152503f0ba615b71921c0--petmatcher.netlify.app'],
-        credentials: true
-    }
 })
 
 io.use((socket, next) => {
