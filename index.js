@@ -35,7 +35,7 @@ app.use(cors({
 const server = app.listen(PORT)
 var io = require('socket.io')(server, {
     cors: {
-        origins: ['https://638152503f0ba615b71921c0--petmatcher.netlify.app'],
+        origin: 'https://638152503f0ba615b71921c0--petmatcher.netlify.app',
         credentials: true
     }
 })
