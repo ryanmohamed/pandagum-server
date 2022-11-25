@@ -57,7 +57,7 @@ server.listen(PORT, () => {
 
 const io = socketio(server, {
     cors: {
-        origin: 'https://638152503f0ba615b71921c0--petmatcher.netlify.app',
+        origins: ['https://638152503f0ba615b71921c0--petmatcher.netlify.app'],
         credentials: true
     }
 })
