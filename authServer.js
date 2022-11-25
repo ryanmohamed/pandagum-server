@@ -8,10 +8,11 @@ const cors = require('cors')
 const mysql = require('mysql')
 
 app.use(express.json())
-// app.use(cors({
-//     credentials: true,
-//     origin: 'http://localhost:3000'
-// }))
+app.use(cors({
+    credentials: true,
+    origin: 'http://192.168.1.156:3000',
+    optionSuccessStatus: 200
+}))
 
 //establish routers - middleware
 const authRouter = require('./routes/auth')
