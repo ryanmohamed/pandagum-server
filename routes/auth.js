@@ -10,6 +10,13 @@ router.use(cookies())
    
 require('dotenv').config()
 
+const cors = require('cors')
+router.use(cors({
+    credentials: true,
+    allowCredentials: true,
+    origin: process.env.CLIENT_NAME
+}))
+
 const authenticateToken = require('../middleware/authenticateToken')
 
 var db = mysql.createConnection({
