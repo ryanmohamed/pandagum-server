@@ -11,7 +11,7 @@ app.use(express.json())
 app.use(cors({
     credentials: true,
     allowCredentials: true,
-    origin: toString(process.env.CLIENT_NAME)
+    origin: process.env.CLIENT_NAME
 }))
 
 //establish routers - middleware
