@@ -51,7 +51,7 @@ app.get('/pool', authenticateToken, async (req, res) => {
     const email = req.user?.email
     const username = req.user?.username
     const ip = req.headers['x-real-ip'] || req.connection.remoteAddress;
-    res.setHeader('Access-Control-Allow-Origin', `${process.env.CLIENT_NAME}`)
+    res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_NAME)
     return res.status(200).json({ username: username })
 
 })
@@ -60,7 +60,7 @@ app.get('/', async (req, res) => {
 
     //simply used as an authetication layer before accessing socket
     const ip = req.headers['x-real-ip'] || req.connection.remoteAddress;
-    res.setHeader('Access-Control-Allow-Origin', `${process.env.CLIENT_NAME}`)
+    res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_NAME)
     return res.status(200).json({ "great": "job!" })
 
 })
