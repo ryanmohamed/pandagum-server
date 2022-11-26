@@ -10,6 +10,8 @@ router.use(cookies())
    
 require('dotenv').config()
 
+console.log(toString(process.env.CLIENT_NAME))
+
 const cors = require('cors')
 router.use(cors({
     credentials: true,
