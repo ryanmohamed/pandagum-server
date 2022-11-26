@@ -127,7 +127,7 @@ router.post('/signup', async (req, res) => {
 
 router.post('/login', async (req, res) => {
 
-    console.log(req.body);
+    console.log(req);
 
     const email = req.body.email
 
