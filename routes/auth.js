@@ -107,7 +107,7 @@ router.post('/signup', async (req, res) => {
                 //httpOnly not available to js, we dont want regular cookies or localStorage!
                 //1day 
                 res.cookie('jwt', refreshToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000})
-                res.setHeader('Access-Control-Allow-Origin', 'https://638152503f0ba615b71921c0--petmatcher.netlify.app')
+                res.setHeader('Access-Control-Allow-Origin', 'https://638157656260b0160736f2c1--petmatcher.netlify.app')
                 res.status(200).json({ user: user, accessToken: accessToken })
 
             })
@@ -162,7 +162,7 @@ router.post('/login', async (req, res) => {
                     //httpOnly not available to js, we dont want regular cookies or localStorage!
                     //1day 
                     res.cookie('jwt', refreshToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000})
-                    res.setHeader('Access-Control-Allow-Origin', 'https://638152503f0ba615b71921c0--petmatcher.netlify.app')
+                    res.setHeader('Access-Control-Allow-Origin', 'https://638157656260b0160736f2c1--petmatcher.netlify.app')
                     res.status(200).json({ user: user, accessToken: accessToken })
                 
                 }
@@ -187,7 +187,7 @@ router.delete('/logout', async (req, res) => {
         
         if(err) return res.status(500).json({ message: "could not delete refresh tokens from db"})
         else {
-            res.setHeader('Access-Control-Allow-Origin', 'https://638152503f0ba615b71921c0--petmatcher.netlify.app')
+            res.setHeader('Access-Control-Allow-Origin', 'https://638157656260b0160736f2c1--petmatcher.netlify.app')
             return res.status(200).json({ message: `succesfully signed ${email} out` })
         }
     })
@@ -220,7 +220,7 @@ router.get('/token', async (req, res) => {
                 //generate new accessToken
                 const user = { email: results[0].UserEmail, username: results[0].UserName }
                 const accessToken = createAccessToken(user) 
-                res.setHeader('Access-Control-Allow-Origin', 'https://638152503f0ba615b71921c0--petmatcher.netlify.app')
+                res.setHeader('Access-Control-Allow-Origin', 'https://638157656260b0160736f2c1--petmatcher.netlify.app')
                 return res.status(200).json({ user: user, accessToken: accessToken })
 
             }
