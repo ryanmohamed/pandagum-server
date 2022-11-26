@@ -114,7 +114,7 @@ router.post('/signup', async (req, res) => {
                 //httpOnly not available to js, we dont want regular cookies or localStorage!
                 //1day 
                 res.cookie('jwt', refreshToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000})
-                res.setHeader('Access-Control-Allow-Origin', `${process.env.CLIENT_NAME}`)
+                res.setHeader('Access-Control-Allow-Origin', "https://638171cba04cfb2d43e70470--petmatcher.netlify.app")
                 res.status(200).json({ user: user, accessToken: accessToken })
 
             })
