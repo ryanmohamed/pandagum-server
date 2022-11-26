@@ -56,6 +56,15 @@ app.get('/pool', authenticateToken, async (req, res) => {
 
 })
 
+app.get('/', async (req, res) => {
+
+    //simply used as an authetication layer before accessing socket
+    const ip = req.headers['x-real-ip'] || req.connection.remoteAddress;
+    res.setHeader('Access-Control-Allow-Origin', 'https://638157656260b0160736f2c1--petmatcher.netlify.app')
+    return res.status(200).json({ "great": "job!" })
+
+})
+
 io.use((socket, next) => {
 
     const { accessToken } = socket.handshake?.auth
