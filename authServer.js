@@ -11,7 +11,7 @@ app.use(express.json())
 app.use(cors({
     credentials: true,
     allowCredentials: true,
-    origin: 'https://638157656260b0160736f2c1--petmatcher.netlify.app'
+    origin: process.env.CLIENT_NAME
 }))
 
 //establish routers - middleware
