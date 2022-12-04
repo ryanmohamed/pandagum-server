@@ -480,7 +480,8 @@ io.on('connection', async (socket) => {
                 roomInfo[roomId].image = "generating image using entries"
 
                 const entries = user1.answers.concat(user2.answers)
-                const query = entries.toString().replaceAll(',', ' ')
+                const no_dups = [...new Set(entries)]
+                const query = no_dups.toString().replaceAll(',', ' ')
 
                 let image = 'generating image using entries'
 
@@ -492,7 +493,7 @@ io.on('connection', async (socket) => {
                       'X-RapidAPI-Key': `${process.env.RAPID_API_KEY}`,
                       'X-RapidAPI-Host': `${process.env.RAPID_API_HOST}`
                     }
-                };
+                }
 
                 await axios.request(options)
                 .then(response => {
@@ -500,7 +501,7 @@ io.on('connection', async (socket) => {
                 })
                 .catch(error => {
                     console.error(error)
-                });
+                })
 
                 roomInfo[roomId].image = image
 
