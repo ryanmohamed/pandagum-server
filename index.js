@@ -1,28 +1,42 @@
 const questions = [
     {
-      question: 'How much wood would a woodchuck chuck, if a woodchuck could chuck wood?',
+      question: 'How should hugs feel with your pet?',
       type: 'mc',
-      choices: ['one', 'two', 'three']
+      choices: ['fluffy', 'cuddly', 'CLAWS', 'soft']
     },
     {
-      question: 'How much wood would a woodchuck chuck, if a woodchuck could chuck wood?',
+      question: 'What size pet would be ideal for you?',
       type: 'mc',
-      choices: ['idk', 'you tell me', 'idc', 'potato', 'forge the sword']
+      choices: ['large', 'medium sized', 'small', 'smol']
     },
     {
-      question: 'How much wood would a woodchuck chuck, if a woodchuck could chuck wood?',
+        question: 'Energy level?',
+        type: 'mc',
+        choices: ['energetic', 'playful', 'lazy', 'wild']
+    },
+    {
+        question: 'Pick one.',
+        type: 'mc',
+        choices: ['good boy', 'good boy']
+    },
+    {
+      question: 'Type the nickname you would give your ideal pet!',
       type: 'short'
     }
 ]
 
+const numQuestions = questions.length
+
 const PORT = process.env.PORT || 4000
 require('dotenv').config()
 
-const express = require('express')
+const express = require('express') 
 const socketio = require('socket.io')
 
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
+
+const axios = require('axios')
 
 const app = express()
 app.use(express.json())
@@ -93,7 +107,8 @@ let roomConnections = {}
 // - user2
 // - ready
 // - questions_left
-// - question 
+// - question
+// - image
 
 let roomInfo = {}
 
@@ -222,8 +237,9 @@ io.of("/").adapter.on("leave-room", (room, id) => {
         roomInfo[room].user1 = roomInfo[room].user2
         roomInfo[room].user2 = undefined
         roomInfo[room].ready = false 
-        roomInfo[room].question_left = 3 //reset questions
+        roomInfo[room].question_left = numQuestions //reset questions
         roomInfo[room].question = undefined //no question if not enough players
+        roomInfo[room].image = undefined
         io.in(room).emit('room update', roomInfo[room])
     }
 
@@ -232,8 +248,9 @@ io.of("/").adapter.on("leave-room", (room, id) => {
     else if(roomInfo[room]?.user2.id === id){
         roomInfo[room].user2 = undefined
         roomInfo[room].ready = false 
-        roomInfo[room].question_left = 3 //reset questions
+        roomInfo[room].question_left = numQuestions //reset questions
         roomInfo[room].question = undefined //no question if not enough players
+        roomInfo[room].image = undefined
         return io.in(room).emit('room update', roomInfo[room])
     }
 
@@ -303,8 +320,9 @@ io.on('connection', async (socket) => {
                         answers: []
                     },
                     user2: undefined,
-                    question_left: 3,
-                    question: undefined
+                    question_left: numQuestions,
+                    question: undefined,
+                    image: undefined
                 }
 
                 console.log(roomInfo[roomId])
@@ -372,8 +390,9 @@ io.on('connection', async (socket) => {
                         answers: []
                     }
                     roomInfo[roomId].ready = true
-                    roomInfo[roomId].question_left = 3
-                    roomInfo[roomId].question = questions[0] 
+                    roomInfo[roomId].question_left = numQuestions
+                    roomInfo[roomId].question = questions[0]
+                    roomInfo[roomId].image = undefined 
                     console.log(roomInfo[roomId])
 
                     sendMsg(id, `joined room ${roomId}`)
@@ -453,9 +472,46 @@ io.on('connection', async (socket) => {
             roomInfo[roomId].user1.locked = false
             roomInfo[roomId].user2.locked = false
             roomInfo[roomId].question_left -= 1
-            roomInfo[roomId].question = questions[3 - roomInfo[roomId].question_left]
-            await io.in(roomId).emit("room update", roomInfo[roomId])
+            roomInfo[roomId].question = questions[numQuestions - roomInfo[roomId].question_left]
+            
+            
+            if(roomInfo[roomId].question_left == 0){
+                await io.in(roomId).emit("match over", "do stuff")
+                roomInfo[roomId].image = "generating image using entries"
+
+                const entries = user1.answers.concat(user2.answers)
+                const query = entries.toString().replaceAll(',', ' ')
+
+                let image = 'generating image using entries'
+
+                const options = {
+                    method: 'GET',
+                    url: 'https://bing-image-search1.p.rapidapi.com/images/search',
+                    params: {q: query},
+                    headers: {
+                      'X-RapidAPI-Key': `${process.env.RAPID_API_KEY}`,
+                      'X-RapidAPI-Host': `${process.env.RAPID_API_HOST}`
+                    }
+                };
+
+                await axios.request(options)
+                .then(response => {
+                    image = response.data?.value[0]?.contentUrl
+                })
+                .catch(error => {
+                    console.error(error)
+                });
+
+                roomInfo[roomId].image = image
+
+                await io.in(roomId).emit("room update", roomInfo[roomId])
+            } 
+            else {
+                await io.in(roomId).emit("room update", roomInfo[roomId])
+            }
         }
+
+        
     })
 
     socket.on('disconnect', () => {
