@@ -277,13 +277,7 @@ io.on('connection', async (socket) => {
 
             const roomMap = io.of('/').adapter.rooms
             const room = roomMap.get(roomId)
-
-            // //if client is in the pool, remove them
-            // if(isInRoom(id, 'pool')){
-            //     sendMsg(id, `${id} leaving pool`)
-            //     socket.leave('pool')
-            // }
-
+            
             //room already exists
             if(room !== undefined && room !== null){
                 //socket is in room
